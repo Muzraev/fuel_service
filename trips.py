@@ -12,7 +12,9 @@ class Trip:
         fuel_liters: float
     ) -> None:
         if distance_km <= 0:
-            raise ValueError('Расстояние должно быть больше нуля.')
+            raise ValueError(
+                'Расстояние должно быть больше нуля.'
+            )
 
         if fuel_liters < 0:
             raise ValueError(
@@ -48,3 +50,60 @@ class Trip:
             f'{self.fuel_liters} л, '
             f'{consumption:.2f} л/100 км'
         )
+
+
+def add_trip(
+    trips: list[Trip],
+    car: Car,
+    distance_km: float,
+    fuel_liters: float
+) -> Trip:
+    """Добавить поездку."""
+    trip = Trip(
+        trip_id=len(trips) + 1,
+        car=car,
+        distance_km=distance_km,
+        fuel_liters=fuel_liters
+    )
+
+    trips.append(trip)
+    return trip
+
+
+def find_trips_by_car(
+    trips: list[Trip],
+    car: Car
+) -> list[Trip]:
+    """Найти поездки автомобиля."""
+    found_trips = []
+
+    for trip in trips:
+        if trip.car.id == car.id:
+            found_trips.append(trip)
+
+    return found_trips
+
+
+def sort_trips_by_consumption(
+    trips: list[Trip]
+) -> list[Trip]:
+    """Отсортировать поездки по расходу."""
+    return sorted(
+        trips,
+        key=lambda trip: trip.calculate_consumption()
+    )
+
+
+def get_average_consumption(
+    trips: list[Trip]
+) -> float:
+    """Рассчитать средний расход топлива."""
+    if not trips:
+        return 0.0
+
+    total = sum(
+        trip.calculate_consumption()
+        for trip in trips
+    )
+
+    return total / len(trips)

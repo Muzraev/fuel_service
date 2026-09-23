@@ -37,3 +37,35 @@ class Refueling:
             f'{self.price_per_liter:.2f} руб./л, '
             f'{self.calculate_cost():.2f} руб.'
         )
+
+
+def add_refueling(
+    refuelings: list[Refueling],
+    car: Car,
+    fuel_liters: float,
+    price_per_liter: float
+) -> Refueling:
+    """Добавить заправку."""
+    refueling = Refueling(
+        refueling_id=len(refuelings) + 1,
+        car=car,
+        fuel_liters=fuel_liters,
+        price_per_liter=price_per_liter
+    )
+
+    refuelings.append(refueling)
+    return refueling
+
+
+def find_refuelings_by_car(
+    refuelings: list[Refueling],
+    car: Car
+) -> list[Refueling]:
+    """Найти заправки автомобиля."""
+    found_refuelings = []
+
+    for refueling in refuelings:
+        if refueling.car.id == car.id:
+            found_refuelings.append(refueling)
+
+    return found_refuelings

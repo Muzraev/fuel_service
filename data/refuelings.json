@@ -1,0 +1,8 @@
+[
+    {
+        "id": 1,
+        "car_id": 1,
+        "fuel_liters": 30.0,
+        "price_per_liter": 65.0
+    }
+]
