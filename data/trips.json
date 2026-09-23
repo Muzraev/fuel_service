@@ -1,1 +1,11 @@
-[]
+[
+    {
+        "id": 1,
+        "car_id": 1,
+        "distance_km": 20.0,
+        "fuel_liters": 5.0,
+        "price_per_liter": 70.0,
+        "consumption": 25.0,
+        "fuel_cost": 350.0
+    }
+]
