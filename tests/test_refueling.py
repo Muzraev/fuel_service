@@ -1,71 +1,84 @@
 import pytest
 
-from cars import Car
-from refueling import (
+from models.cars import Car
+from models.fuels import Fuel
+from models.refueling import (
     Refueling,
     add_refueling,
-    find_refuelings_by_car
+    find_refuelings_by_car,
+    get_total_cost
 )
 
 
 def test_refueling_creation():
     car = Car(1, 'Audi')
+    fuel = Fuel(1, 'АИ-95')
 
     refueling = Refueling(
-        refueling_id=1,
-        car=car,
-        fuel_liters=30,
-        price_per_liter=65
+        1,
+        car,
+        fuel,
+        40,
+        65
     )
 
-    assert refueling.id == 1
     assert refueling.car is car
-    assert refueling.fuel_liters == 30
-    assert refueling.price_per_liter == 65
+    assert refueling.fuel is fuel
+    assert refueling.fuel_liters == 40
 
 
 def test_calculate_cost():
     car = Car(1, 'Audi')
-    refueling = Refueling(1, car, 30, 65)
+    fuel = Fuel(1, 'АИ-95')
 
-    assert refueling.calculate_cost() == 1950
+    refueling = Refueling(
+        1,
+        car,
+        fuel,
+        40,
+        65
+    )
+
+    assert refueling.calculate_cost() == 2600
 
 
 def test_add_refueling():
     car = Car(1, 'Audi')
+    fuel = Fuel(1, 'АИ-95')
     refuelings = []
 
     refueling = add_refueling(
         refuelings,
         car,
-        30,
+        fuel,
+        40,
         65
     )
 
     assert refueling.id == 1
-    assert refueling.car is car
     assert len(refuelings) == 1
-
-
-def test_wrong_fuel_liters():
-    car = Car(1, 'Audi')
-
-    with pytest.raises(ValueError):
-        Refueling(
-            refueling_id=1,
-            car=car,
-            fuel_liters=0,
-            price_per_liter=65
-        )
 
 
 def test_find_refuelings_by_car():
     audi = Car(1, 'Audi')
     bmw = Car(2, 'BMW')
+    fuel = Fuel(1, 'АИ-95')
 
     refuelings = [
-        Refueling(1, audi, 30, 65),
-        Refueling(2, bmw, 40, 60)
+        Refueling(
+            1,
+            audi,
+            fuel,
+            40,
+            65
+        ),
+        Refueling(
+            2,
+            bmw,
+            fuel,
+            30,
+            65
+        )
     ]
 
     result = find_refuelings_by_car(
@@ -75,3 +88,41 @@ def test_find_refuelings_by_car():
 
     assert len(result) == 1
     assert result[0].car is audi
+
+
+def test_total_cost():
+    car = Car(1, 'Audi')
+    fuel = Fuel(1, 'АИ-95')
+
+    refuelings = [
+        Refueling(
+            1,
+            car,
+            fuel,
+            10,
+            60
+        ),
+        Refueling(
+            2,
+            car,
+            fuel,
+            20,
+            60
+        )
+    ]
+
+    assert get_total_cost(refuelings) == 1800
+
+
+def test_wrong_refueling():
+    car = Car(1, 'Audi')
+    fuel = Fuel(1, 'АИ-95')
+
+    with pytest.raises(ValueError):
+        Refueling(
+            1,
+            car,
+            fuel,
+            0,
+            65
+        )

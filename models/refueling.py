@@ -1,4 +1,5 @@
-from cars import Car
+from .cars import Car
+from .fuels import Fuel
 
 
 class Refueling:
@@ -8,6 +9,7 @@ class Refueling:
         self,
         refueling_id: int,
         car: Car,
+        fuel: Fuel,
         fuel_liters: float,
         price_per_liter: float
     ) -> None:
@@ -16,13 +18,14 @@ class Refueling:
                 'Количество топлива должно быть больше нуля.'
             )
 
-        if price_per_liter < 0:
+        if price_per_liter <= 0:
             raise ValueError(
-                'Стоимость топлива не может быть отрицательной.'
+                'Цена топлива должна быть больше нуля.'
             )
 
         self.id = refueling_id
         self.car = car
+        self.fuel = fuel
         self.fuel_liters = fuel_liters
         self.price_per_liter = price_per_liter
 
@@ -32,9 +35,10 @@ class Refueling:
 
     def __str__(self) -> str:
         return (
-            f'Заправка №{self.id}: {self.car.name}, '
-            f'{self.fuel_liters} л, '
-            f'{self.price_per_liter:.2f} руб./л, '
+            f'Заправка №{self.id}: '
+            f'{self.car.name}, '
+            f'{self.fuel.name}, '
+            f'{self.fuel_liters:.1f} л, '
             f'{self.calculate_cost():.2f} руб.'
         )
 
@@ -42,6 +46,7 @@ class Refueling:
 def add_refueling(
     refuelings: list[Refueling],
     car: Car,
+    fuel: Fuel,
     fuel_liters: float,
     price_per_liter: float
 ) -> Refueling:
@@ -49,6 +54,7 @@ def add_refueling(
     refueling = Refueling(
         refueling_id=len(refuelings) + 1,
         car=car,
+        fuel=fuel,
         fuel_liters=fuel_liters,
         price_per_liter=price_per_liter
     )
@@ -69,3 +75,37 @@ def find_refuelings_by_car(
             found_refuelings.append(refueling)
 
     return found_refuelings
+
+
+def find_refuelings_by_fuel(
+    refuelings: list[Refueling],
+    fuel: Fuel
+) -> list[Refueling]:
+    """Найти заправки по виду топлива."""
+    found_refuelings = []
+
+    for refueling in refuelings:
+        if refueling.fuel.id == fuel.id:
+            found_refuelings.append(refueling)
+
+    return found_refuelings
+
+
+def sort_refuelings_by_cost(
+    refuelings: list[Refueling]
+) -> list[Refueling]:
+    """Отсортировать заправки по стоимости."""
+    return sorted(
+        refuelings,
+        key=lambda refueling: refueling.calculate_cost()
+    )
+
+
+def get_total_cost(
+    refuelings: list[Refueling]
+) -> float:
+    """Рассчитать общую стоимость всех заправок."""
+    return sum(
+        refueling.calculate_cost()
+        for refueling in refuelings
+    )

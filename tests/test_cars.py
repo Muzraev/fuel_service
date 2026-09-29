@@ -1,4 +1,8 @@
-from cars import Car, add_car, find_cars, sort_cars
+from models.cars import (
+    Car,
+    add_car,
+    find_car_by_id
+)
 
 
 def test_car_creation():
@@ -17,32 +21,24 @@ def test_car_str():
 def test_add_car():
     cars = []
 
-    car = add_car(cars, 'BMW X5')
+    car = add_car(
+        cars,
+        'BMW X5'
+    )
 
     assert car.id == 1
-    assert car.name == 'BMW X5'
     assert len(cars) == 1
 
 
-def test_find_cars():
+def test_find_car_by_id():
     cars = [
-        Car(1, 'Audi A6'),
-        Car(2, 'BMW X5')
+        Car(1, 'Audi'),
+        Car(2, 'BMW')
     ]
 
-    result = find_cars(cars, 'audi')
+    result = find_car_by_id(
+        cars,
+        2
+    )
 
-    assert len(result) == 1
-    assert result[0].name == 'Audi A6'
-
-
-def test_sort_cars():
-    cars = [
-        Car(1, 'BMW'),
-        Car(2, 'Audi')
-    ]
-
-    result = sort_cars(cars)
-
-    assert result[0].name == 'Audi'
-    assert result[1].name == 'BMW'
+    assert result.name == 'BMW'

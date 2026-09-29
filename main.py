@@ -1,35 +1,47 @@
-from cars import Car, add_car, find_cars, sort_cars
-from refueling import (
+from models.cars import (
+    Car,
+    add_car,
+    sort_cars
+)
+from models.consumptions import (
+    add_consumption,
+    find_consumption_by_car
+)
+from models.fuels import (
+    Fuel,
+    add_fuel,
+    sort_fuels
+)
+from models.refueling import (
     Refueling,
     add_refueling,
-    find_refuelings_by_car
+    find_refuelings_by_car,
+    get_total_cost,
+    sort_refuelings_by_cost
 )
 from storage import (
     find_car_by_id,
+    find_fuel_by_id,
     load_cars,
+    load_consumptions,
+    load_fuels,
     load_refuelings,
-    load_trips,
     save_cars,
-    save_refuelings,
-    save_trips
-)
-from trips import (
-    Trip,
-    add_trip,
-    find_trips_by_car,
-    get_average_consumption,
-    sort_trips_by_consumption
+    save_consumptions,
+    save_fuels,
+    save_refuelings
 )
 from utils import input_float, input_int
 
 
 CARS_FILE = 'data/cars.json'
-TRIPS_FILE = 'data/trips.json'
+FUELS_FILE = 'data/fuels.json'
+CONSUMPTIONS_FILE = 'data/consumptions.json'
 REFUELINGS_FILE = 'data/refuelings.json'
 
 
 def show_cars(cars: list[Car]) -> None:
-    """Показать список автомобилей."""
+    """Показать автомобили."""
     if not cars:
         print('Автомобилей пока нет.')
         return
@@ -40,23 +52,22 @@ def show_cars(cars: list[Car]) -> None:
         print(car)
 
 
-def show_trips(trips: list[Trip]) -> None:
-    """Показать список поездок."""
-    if not trips:
-        print('Поездок пока нет.')
+def show_fuels(fuels: list[Fuel]) -> None:
+    """Показать виды топлива."""
+    if not fuels:
+        print('Видов топлива пока нет.')
         return
 
-    print('\nПоездки:')
+    print('\nТопливо:')
 
-    for trip in trips:
-        print(trip)
-        print(f'Статус: {trip.get_consumption_status()}')
+    for fuel in sort_fuels(fuels):
+        print(fuel)
 
 
 def show_refuelings(
     refuelings: list[Refueling]
 ) -> None:
-    """Показать список заправок."""
+    """Показать заправки."""
     if not refuelings:
         print('Заправок пока нет.')
         return
@@ -70,185 +81,47 @@ def show_refuelings(
 def main() -> None:
     """Запустить сервис учета топлива."""
     cars = load_cars(CARS_FILE)
-    trips = load_trips(TRIPS_FILE, cars)
+    fuels = load_fuels(FUELS_FILE)
+
+    consumptions = load_consumptions(
+        CONSUMPTIONS_FILE,
+        cars
+    )
+
     refuelings = load_refuelings(
         REFUELINGS_FILE,
-        cars
+        cars,
+        fuels
     )
 
     while True:
         print('\n=== Сервис учета топлива ===')
-        print('1. Показать автомобили')
-        print('2. Добавить автомобиль')
-        print('3. Найти автомобиль')
-        print('4. Добавить поездку')
-        print('5. Показать поездки')
-        print('6. Показать поездки автомобиля')
-        print('7. Показать средний расход')
-        print('8. Отсортировать поездки по расходу')
-        print('9. Добавить заправку')
-        print('10. Показать заправки')
-        print('11. Показать заправки автомобиля')
+        print('1. Добавить заправку')
+        print('2. Показать все заправки')
+        print('3. Показать заправки автомобиля')
+        print('4. Общая стоимость заправок')
+        print('5. Сортировать заправки по стоимости')
+        print('6. Добавить автомобиль')
+        print('7. Показать автомобили')
+        print('8. Добавить вид топлива')
+        print('9. Показать виды топлива')
+        print('10. Указать расход автомобиля')
+        print('11. Показать расход автомобиля')
+        print('12. Рассчитать топливо на расстояние')
         print('0. Выход')
 
         choice = input('Выберите действие: ')
 
         if choice == '1':
-            show_cars(cars)
-
-        elif choice == '2':
-            name = input(
-                'Введите название автомобиля: '
-            ).strip()
-
-            if not name:
-                print(
-                    'Название автомобиля '
-                    'не может быть пустым.'
-                )
-                continue
-
-            car = add_car(cars, name)
-            save_cars(CARS_FILE, cars)
-
-            print(
-                f'Автомобиль {car.name} '
-                'успешно добавлен.'
-            )
-
-        elif choice == '3':
-            query = input(
-                'Введите название для поиска: '
-            )
-
-            found_cars = find_cars(
-                cars,
-                query
-            )
-
-            if not found_cars:
-                print('Автомобили не найдены.')
-            else:
-                for car in found_cars:
-                    print(car)
-
-        elif choice == '4':
             if not cars:
                 print(
                     'Сначала добавьте автомобиль.'
                 )
                 continue
 
-            show_cars(cars)
-
-            car_id = input_int(
-                'Введите ID автомобиля: '
-            )
-
-            car = find_car_by_id(
-                cars,
-                car_id
-            )
-
-            if car is None:
+            if not fuels:
                 print(
-                    'Автомобиль с таким ID '
-                    'не найден.'
-                )
-                continue
-
-            distance_km = input_float(
-                'Введите пройденное расстояние, км: '
-            )
-
-            fuel_liters = input_float(
-                'Введите количество '
-                'потраченного топлива, л: '
-            )
-
-            try:
-                trip = add_trip(
-                    trips,
-                    car,
-                    distance_km,
-                    fuel_liters
-                )
-
-                save_trips(
-                    TRIPS_FILE,
-                    trips
-                )
-
-                print('Поездка добавлена.')
-                print(
-                    f'Расход: '
-                    f'{trip.calculate_consumption():.2f} '
-                    'л/100 км'
-                )
-                print(
-                    f'Статус: '
-                    f'{trip.get_consumption_status()}'
-                )
-
-            except ValueError as error:
-                print(f'Ошибка: {error}')
-
-        elif choice == '5':
-            show_trips(trips)
-
-        elif choice == '6':
-            if not cars:
-                print('Автомобилей пока нет.')
-                continue
-
-            show_cars(cars)
-
-            car_id = input_int(
-                'Введите ID автомобиля: '
-            )
-
-            car = find_car_by_id(
-                cars,
-                car_id
-            )
-
-            if car is None:
-                print(
-                    'Автомобиль с таким ID '
-                    'не найден.'
-                )
-                continue
-
-            car_trips = find_trips_by_car(
-                trips,
-                car
-            )
-
-            show_trips(car_trips)
-
-        elif choice == '7':
-            average = get_average_consumption(
-                trips
-            )
-
-            print(
-                f'Средний расход топлива: '
-                f'{average:.2f} л/100 км'
-            )
-
-        elif choice == '8':
-            sorted_trips = (
-                sort_trips_by_consumption(
-                    trips
-                )
-            )
-
-            show_trips(sorted_trips)
-
-        elif choice == '9':
-            if not cars:
-                print(
-                    'Сначала добавьте автомобиль.'
+                    'Сначала добавьте вид топлива.'
                 )
                 continue
 
@@ -264,24 +137,37 @@ def main() -> None:
             )
 
             if car is None:
-                print(
-                    'Автомобиль с таким ID '
-                    'не найден.'
-                )
+                print('Автомобиль не найден.')
+                continue
+
+            show_fuels(fuels)
+
+            fuel_id = input_int(
+                'Введите ID топлива: '
+            )
+
+            fuel = find_fuel_by_id(
+                fuels,
+                fuel_id
+            )
+
+            if fuel is None:
+                print('Топливо не найдено.')
                 continue
 
             fuel_liters = input_float(
-                'Введите количество топлива, л: '
+                'Количество топлива, л: '
             )
 
             price_per_liter = input_float(
-                'Введите стоимость одного литра: '
+                'Цена за литр, руб.: '
             )
 
             try:
                 refueling = add_refueling(
                     refuelings,
                     car,
+                    fuel,
                     fuel_liters,
                     price_per_liter
                 )
@@ -293,22 +179,17 @@ def main() -> None:
 
                 print('Заправка добавлена.')
                 print(
-                    f'Стоимость заправки: '
-                    f'{refueling.calculate_cost():.2f} '
-                    'руб.'
+                    f'Стоимость: '
+                    f'{refueling.calculate_cost():.2f} руб.'
                 )
 
             except ValueError as error:
                 print(f'Ошибка: {error}')
 
-        elif choice == '10':
+        elif choice == '2':
             show_refuelings(refuelings)
 
-        elif choice == '11':
-            if not cars:
-                print('Автомобилей пока нет.')
-                continue
-
+        elif choice == '3':
             show_cars(cars)
 
             car_id = input_int(
@@ -321,31 +202,219 @@ def main() -> None:
             )
 
             if car is None:
+                print('Автомобиль не найден.')
+                continue
+
+            result = find_refuelings_by_car(
+                refuelings,
+                car
+            )
+
+            show_refuelings(result)
+
+        elif choice == '4':
+            total = get_total_cost(
+                refuelings
+            )
+
+            print(
+                f'Общая стоимость заправок: '
+                f'{total:.2f} руб.'
+            )
+
+        elif choice == '5':
+            result = sort_refuelings_by_cost(
+                refuelings
+            )
+
+            show_refuelings(result)
+
+        elif choice == '6':
+            name = input(
+                'Введите название автомобиля: '
+            ).strip()
+
+            if not name:
                 print(
-                    'Автомобиль с таким ID '
-                    'не найден.'
+                    'Название не может быть пустым.'
                 )
                 continue
 
-            car_refuelings = (
-                find_refuelings_by_car(
-                    refuelings,
-                    car
-                )
+            car = add_car(
+                cars,
+                name
             )
 
-            show_refuelings(
-                car_refuelings
+            save_cars(
+                CARS_FILE,
+                cars
             )
+
+            print(
+                f'Автомобиль {car.name} добавлен.'
+            )
+
+        elif choice == '7':
+            show_cars(cars)
+
+        elif choice == '8':
+            name = input(
+                'Введите название топлива: '
+            ).strip()
+
+            if not name:
+                print(
+                    'Название не может быть пустым.'
+                )
+                continue
+
+            fuel = add_fuel(
+                fuels,
+                name
+            )
+
+            save_fuels(
+                FUELS_FILE,
+                fuels
+            )
+
+            print(
+                f'Топливо {fuel.name} добавлено.'
+            )
+
+        elif choice == '9':
+            show_fuels(fuels)
+
+        elif choice == '10':
+            show_cars(cars)
+
+            car_id = input_int(
+                'Введите ID автомобиля: '
+            )
+
+            car = find_car_by_id(
+                cars,
+                car_id
+            )
+
+            if car is None:
+                print('Автомобиль не найден.')
+                continue
+
+            value = input_float(
+                'Введите расход, л/100 км: '
+            )
+
+            try:
+                consumption = add_consumption(
+                    consumptions,
+                    car,
+                    value
+                )
+
+                save_consumptions(
+                    CONSUMPTIONS_FILE,
+                    consumptions
+                )
+
+                print(
+                    f'Расход для {car.name}: '
+                    f'{consumption.liters_per_100km:.1f} '
+                    'л/100 км'
+                )
+
+            except ValueError as error:
+                print(f'Ошибка: {error}')
+
+        elif choice == '11':
+            show_cars(cars)
+
+            car_id = input_int(
+                'Введите ID автомобиля: '
+            )
+
+            car = find_car_by_id(
+                cars,
+                car_id
+            )
+
+            if car is None:
+                print('Автомобиль не найден.')
+                continue
+
+            consumption = find_consumption_by_car(
+                consumptions,
+                car
+            )
+
+            if consumption is None:
+                print(
+                    'Расход для автомобиля '
+                    'не указан.'
+                )
+            else:
+                print(consumption)
+
+        elif choice == '12':
+            show_cars(cars)
+
+            car_id = input_int(
+                'Введите ID автомобиля: '
+            )
+
+            car = find_car_by_id(
+                cars,
+                car_id
+            )
+
+            if car is None:
+                print('Автомобиль не найден.')
+                continue
+
+            consumption = find_consumption_by_car(
+                consumptions,
+                car
+            )
+
+            if consumption is None:
+                print(
+                    'Сначала укажите расход '
+                    'автомобиля.'
+                )
+                continue
+
+            distance = input_float(
+                'Введите расстояние, км: '
+            )
+
+            try:
+                fuel_needed = (
+                    consumption
+                    .calculate_fuel_for_distance(
+                        distance
+                    )
+                )
+
+                print(
+                    f'Потребуется топлива: '
+                    f'{fuel_needed:.2f} л'
+                )
+
+            except ValueError as error:
+                print(f'Ошибка: {error}')
 
         elif choice == '0':
             save_cars(
                 CARS_FILE,
                 cars
             )
-            save_trips(
-                TRIPS_FILE,
-                trips
+            save_fuels(
+                FUELS_FILE,
+                fuels
+            )
+            save_consumptions(
+                CONSUMPTIONS_FILE,
+                consumptions
             )
             save_refuelings(
                 REFUELINGS_FILE,
