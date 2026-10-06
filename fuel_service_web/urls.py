@@ -7,5 +7,11 @@ urlpatterns = [
     path('', include('homepage.urls')),
     path('cars/', include('cars.urls')),
     path('fuels/', include('fuels.urls')),
-    path('refuelings/', include('refuelings.urls')),
+    path(
+        'refuelings/',
+        include('refuelings.urls')
+    ),
 ]
+
+
+handler404 = 'homepage.views.page_not_found'
