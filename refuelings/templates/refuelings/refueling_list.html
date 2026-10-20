@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Заправки — Сервис учета топлива{% endblock %}
+
+{% block content %}
+  <h1>Заправки</h1>
+  <p>Всего заправок: {{ refuelings|length }}</p>
+
+  {% if refuelings %}
+    <p>
+      <strong>Общая стоимость:</strong>
+      {{ total_cost|floatformat:2 }} руб.
+    </p>
+  {% endif %}
+
+  {% for item in refueling_items %}
+    {% include "refuelings/includes/refueling_card.html" %}
+  {% empty %}
+    <p>Заправок пока нет.</p>
+  {% endfor %}
+{% endblock %}

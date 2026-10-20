@@ -1,6 +1,6 @@
-from django.http import HttpResponse
+from django.shortcuts import render
 
-from homepage.views import page
+from models.refueling import get_total_cost
 from storage import (
     load_cars,
     load_fuels,
@@ -28,81 +28,30 @@ def get_refuelings():
 def refuelings(request):
     """Показать список заправок."""
     refuelings_list = get_refuelings()
-
-    if not refuelings_list:
-        content = """
-            <h1>Заправки</h1>
-            <p>Заправок пока нет.</p>
-        """
-
-        return HttpResponse(
-            page('Заправки', content)
-        )
-
-    rows = ''
-
-    total_cost = 0
+    refueling_items = []
 
     for refueling in refuelings_list:
-        cost = refueling.calculate_cost()
-        total_cost += cost
+        refueling_items.append({
+            'refueling': refueling,
+            'cost': refueling.calculate_cost(),
+        })
 
-        rows += f"""
-            <tr>
-                <td>{refueling.id}</td>
-                <td>{refueling.car.name}</td>
-                <td>{refueling.fuel.name}</td>
-                <td>{refueling.fuel_liters:.1f} л</td>
-                <td>{refueling.price_per_liter:.2f} руб.</td>
-                <td>{cost:.2f} руб.</td>
-                <td>
-                    <a href="/refuelings/{refueling.id}/"
-                       class="btn btn-sm btn-dark">
-                        Подробнее
-                    </a>
-                </td>
-            </tr>
-        """
+    context = {
+        'refuelings': refuelings_list,
+        'refueling_items': refueling_items,
+        'total_cost': get_total_cost(refuelings_list),
+    }
 
-    content = f"""
-        <h1>Заправки</h1>
-
-        <p>
-            <strong>Общая стоимость:</strong>
-            {total_cost:.2f} руб.
-        </p>
-
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Автомобиль</th>
-                    <th>Топливо</th>
-                    <th>Количество</th>
-                    <th>Цена за литр</th>
-                    <th>Стоимость</th>
-                    <th></th>
-                </tr>
-            </thead>
-
-            <tbody>
-                {rows}
-            </tbody>
-        </table>
-    """
-
-    return HttpResponse(
-        page('Заправки', content)
+    return render(
+        request,
+        'refuelings/refueling_list.html',
+        context
     )
 
 
-def refueling_detail(
-    request,
-    refueling_id
-):
+def refueling_detail(request, refueling_id):
     """Показать одну заправку."""
     refuelings_list = get_refuelings()
-
     refueling = None
 
     for item in refuelings_list:
@@ -110,54 +59,18 @@ def refueling_detail(
             refueling = item
             break
 
-    if refueling is None:
-        return HttpResponse(
-            page(
-                'Заправка не найдена',
-                '<h1>Заправка не найдена</h1>'
-            ),
-            status=404
-        )
+    context = {
+        'refueling': refueling,
+        'cost': (
+            refueling.calculate_cost()
+            if refueling is not None
+            else None
+        ),
+    }
 
-    cost = refueling.calculate_cost()
-
-    content = f"""
-        <h1>Заправка №{refueling.id}</h1>
-
-        <p>
-            <strong>Автомобиль:</strong>
-            {refueling.car.name}
-        </p>
-
-        <p>
-            <strong>Топливо:</strong>
-            {refueling.fuel.name}
-        </p>
-
-        <p>
-            <strong>Количество:</strong>
-            {refueling.fuel_liters:.1f} л
-        </p>
-
-        <p>
-            <strong>Цена за литр:</strong>
-            {refueling.price_per_liter:.2f} руб.
-        </p>
-
-        <p>
-            <strong>Стоимость:</strong>
-            {cost:.2f} руб.
-        </p>
-
-        <a href="/refuelings/"
-           class="btn btn-dark">
-            Назад
-        </a>
-    """
-
-    return HttpResponse(
-        page(
-            f'Заправка №{refueling.id}',
-            content
-        )
+    return render(
+        request,
+        'refuelings/refueling_detail.html',
+        context,
+        status=404 if refueling is None else 200
     )

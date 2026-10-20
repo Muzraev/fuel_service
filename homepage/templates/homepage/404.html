@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block title %}Ошибка 404 — Сервис учета топлива{% endblock %}
+
+{% block content %}
+  <h1>404 — страница не найдена</h1>
+  <p>Такой страницы не существует.</p>
+  <a href="{% url 'homepage:index' %}" class="btn btn-dark">
+    Вернуться на главную
+  </a>
+{% endblock %}

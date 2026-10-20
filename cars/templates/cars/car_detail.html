@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if car %}
+    {{ car.name|default:"Автомобиль" }} — Сервис учета топлива
+  {% else %}
+    Автомобиль не найден — Сервис учета топлива
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+  {% if car %}
+    <div class="card fuel-card">
+      <div class="card-body">
+        <h1 class="card-title">{{ car.name|default:"Без названия" }}</h1>
+        <p><strong>ID автомобиля:</strong> {{ car.id }}</p>
+        <p>
+          <strong>Расход топлива:</strong>
+          {% if consumption %}
+            {{ consumption.liters_per_100km|floatformat:1 }} л/100 км
+          {% else %}
+            Не указан
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  {% else %}
+    <h1>Автомобиль не найден</h1>
+    <p>Автомобиль с указанным идентификатором отсутствует.</p>
+  {% endif %}
+  <a href="{% url 'cars:cars' %}" class="btn btn-outline-dark mt-3">
+    ← к списку автомобилей
+  </a>
+{% endblock %}

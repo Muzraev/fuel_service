@@ -1,0 +1,31 @@
+<article class="card fuel-card mb-3">
+  <div class="card-body">
+    <h2 class="card-title h5">Заправка №{{ item.refueling.id }}</h2>
+    <p class="mb-1">
+      <strong>Автомобиль:</strong>
+      {{ item.refueling.car.name|default:"Без названия" }}
+    </p>
+    <p class="mb-1">
+      <strong>Топливо:</strong>
+      {{ item.refueling.fuel.name|default:"Без названия" }}
+    </p>
+    <p class="mb-1">
+      <strong>Количество:</strong>
+      {{ item.refueling.fuel_liters|floatformat:1 }} л
+    </p>
+    <p class="mb-1">
+      <strong>Цена за литр:</strong>
+      {{ item.refueling.price_per_liter|floatformat:2 }} руб.
+    </p>
+    <p>
+      <strong>Стоимость:</strong>
+      {{ item.cost|floatformat:2 }} руб.
+    </p>
+    <a
+      href="{% url 'refuelings:refueling_detail' item.refueling.id %}"
+      class="btn btn-dark"
+    >
+      Подробнее
+    </a>
+  </div>
+</article>

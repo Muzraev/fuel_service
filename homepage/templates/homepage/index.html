@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Главная — Сервис учета топлива{% endblock %}
+
+{% block content %}
+  <h1>Сервис учета топлива</h1>
+  <p class="lead">
+    Веб-приложение для просмотра информации об автомобилях,
+    топливе, расходе и заправках.
+  </p>
+  <hr>
+  <h2 class="h4">Основные разделы</h2>
+  <a href="{% url 'refuelings:refuelings' %}" class="btn btn-dark me-2">
+    Заправки
+  </a>
+  <a href="{% url 'cars:cars' %}" class="btn btn-outline-dark me-2">
+    Автомобили
+  </a>
+  <a href="{% url 'fuels:fuels' %}" class="btn btn-outline-dark">
+    Топливо
+  </a>
+{% endblock %}

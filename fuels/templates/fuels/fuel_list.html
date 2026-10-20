@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Топливо — Сервис учета топлива{% endblock %}
+
+{% block content %}
+  <h1>Виды топлива</h1>
+  <p>Всего видов топлива: {{ fuels|length }}</p>
+
+  <div class="table-responsive">
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Название</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fuel in fuels %}
+          <tr>
+            <td>{{ fuel.id }}</td>
+            <td>{{ fuel.name|default:"Без названия" }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="2">Видов топлива пока нет.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

@@ -1,0 +1,11 @@
+<article class="card fuel-card mb-3">
+  <div class="card-body">
+    <h2 class="card-title h5">
+      {{ car.name|default:"Без названия" }}
+    </h2>
+    <p class="card-text">ID: {{ car.id }}</p>
+    <a href="{% url 'cars:car_detail' car.id %}" class="btn btn-dark">
+      Подробнее
+    </a>
+  </div>
+</article>
