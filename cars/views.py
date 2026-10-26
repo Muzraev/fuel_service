@@ -1,60 +1,22 @@
-from django.shortcuts import render
+﻿from django.shortcuts import render
 
-from models.consumptions import find_consumption_by_car
-from storage import (
-    find_car_by_id,
-    load_cars,
-    load_consumptions
-)
-
-
-CARS_FILE = 'data/cars.json'
-CONSUMPTIONS_FILE = 'data/consumptions.json'
+from db.database import fetch_all, fetch_one
 
 
 def cars(request):
-    """Показать список автомобилей."""
-    cars_list = load_cars(CARS_FILE)
-
-    context = {
-        'cars': cars_list,
-    }
-
-    return render(
-        request,
-        'cars/car_list.html',
-        context
-    )
+    """Показать автомобили из SQLite."""
+    return render(request, 'cars/car_list.html', {'cars': fetch_all('cars')})
 
 
 def car_detail(request, car_id):
-    """Показать информацию об автомобиле."""
-    cars_list = load_cars(CARS_FILE)
-    car = find_car_by_id(
-        cars_list,
-        car_id
+    """Получить автомобиль и необязательную норму расхода через JOIN."""
+    car = fetch_one('car_detail', (car_id,))
+    consumption = (
+        car if car is not None and car['liters_per_100km'] is not None
+        else None
     )
-
-    consumption = None
-
-    if car is not None:
-        consumptions = load_consumptions(
-            CONSUMPTIONS_FILE,
-            cars_list
-        )
-        consumption = find_consumption_by_car(
-            consumptions,
-            car
-        )
-
-    context = {
-        'car': car,
-        'consumption': consumption,
-    }
-
     return render(
-        request,
-        'cars/car_detail.html',
-        context,
-        status=404 if car is None else 200
+        request, 'cars/car_detail.html',
+        {'car': car, 'consumption': consumption},
+        status=404 if car is None else 200,
     )

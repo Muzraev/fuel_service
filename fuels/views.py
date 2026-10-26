@@ -1,21 +1,10 @@
-from django.shortcuts import render
+﻿from django.shortcuts import render
 
-from storage import load_fuels
-
-
-FUELS_FILE = 'data/fuels.json'
+from db.database import fetch_all
 
 
 def fuels(request):
-    """Показать виды топлива."""
-    fuels_list = load_fuels(FUELS_FILE)
-
-    context = {
-        'fuels': fuels_list,
-    }
-
+    """Показать виды топлива из SQLite."""
     return render(
-        request,
-        'fuels/fuel_list.html',
-        context
+        request, 'fuels/fuel_list.html', {'fuels': fetch_all('fuels')}
     )

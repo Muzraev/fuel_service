@@ -11,7 +11,7 @@ SECRET_KEY = (
     'yr=26ugw@vssmukh$iuewchos$mt'
 )
 
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
     'localhost',

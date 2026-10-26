@@ -1,76 +1,72 @@
+﻿import math
+
 from django.shortcuts import render
 
-from models.refueling import get_total_cost
-from storage import (
-    load_cars,
-    load_fuels,
-    load_refuelings
-)
+from db.database import fetch_all, fetch_one
 
 
-CARS_FILE = 'data/cars.json'
-FUELS_FILE = 'data/fuels.json'
-REFUELINGS_FILE = 'data/refuelings.json'
-
-
-def get_refuelings():
-    """Загрузить данные о заправках."""
-    cars = load_cars(CARS_FILE)
-    fuels = load_fuels(FUELS_FILE)
-
-    return load_refuelings(
-        REFUELINGS_FILE,
-        cars,
-        fuels
-    )
+def as_item(row):
+    """Подготовить результат JOIN для существующей карточки заправки."""
+    refueling = dict(row)
+    refueling['car'] = {'id': row['car_id'], 'name': row['car_name']}
+    refueling['fuel'] = {'id': row['fuel_id'], 'name': row['fuel_name']}
+    return {'refueling': refueling, 'cost': row['cost']}
 
 
 def refuelings(request):
-    """Показать список заправок."""
-    refuelings_list = get_refuelings()
-    refueling_items = []
-
-    for refueling in refuelings_list:
-        refueling_items.append({
-            'refueling': refueling,
-            'cost': refueling.calculate_cost(),
-        })
-
-    context = {
-        'refuelings': refuelings_list,
-        'refueling_items': refueling_items,
-        'total_cost': get_total_cost(refuelings_list),
-    }
-
-    return render(
-        request,
-        'refuelings/refueling_list.html',
-        context
-    )
+    """Показать заправки и общую стоимость из базы данных."""
+    rows = fetch_all('refuelings')
+    return render(request, 'refuelings/refueling_list.html', {
+        'refuelings': rows,
+        'refueling_items': [as_item(row) for row in rows],
+        'total_cost': fetch_one('totals')['total_cost'],
+    })
 
 
 def refueling_detail(request, refueling_id):
-    """Показать одну заправку."""
-    refuelings_list = get_refuelings()
-    refueling = None
-
-    for item in refuelings_list:
-        if item.id == refueling_id:
-            refueling = item
-            break
-
-    context = {
-        'refueling': refueling,
-        'cost': (
-            refueling.calculate_cost()
-            if refueling is not None
-            else None
-        ),
-    }
-
+    """Получить заправку вместе с автомобилем и топливом."""
+    row = fetch_one('refueling_detail', (refueling_id,))
     return render(
-        request,
-        'refuelings/refueling_detail.html',
-        context,
-        status=404 if refueling is None else 200
+        request, 'refuelings/refueling_detail.html',
+        as_item(row) if row is not None else {},
+        status=404 if row is None else 200,
     )
+
+
+def search(request):
+    """Поиск заправок по пользовательским параметрам."""
+    context = {'cars': fetch_all('cars'), 'fuels': fetch_all('fuels')}
+    try:
+        car = int(request.GET['car']) if request.GET.get('car') else None
+        fuel = int(request.GET['fuel']) if request.GET.get('fuel') else None
+        liters = float(request.GET.get('min_liters') or 0)
+        if (not math.isfinite(liters) or liters < 0
+                or (car is not None and not 0 < car <= 2**63 - 1)
+                or (fuel is not None and not 0 < fuel <= 2**63 - 1)):
+            raise ValueError
+    except (ValueError, OverflowError):
+        context['error'] = 'Проверьте параметры: объём должен быть от 0.'
+    else:
+        rows = fetch_all('search', (car, car, fuel, fuel, liters))
+        context['refueling_items'] = [as_item(row) for row in rows]
+    return render(request, 'refuelings/search.html', context)
+
+
+def statistics(request):
+    """Общие показатели, группировка и фильтрация групп в SQL."""
+    context = {
+        'totals': fetch_one('totals'),
+        'consumption': fetch_one('consumption_totals'),
+        'by_car': fetch_all('by_car'),
+        'by_fuel': fetch_all('by_fuel'),
+        'without_refuelings': fetch_all('without_refuelings'),
+    }
+    try:
+        threshold = int(request.GET.get('threshold') or 0)
+        if not 0 <= threshold <= 2**63 - 1:
+            raise ValueError
+    except ValueError:
+        context['error'] = 'Порог должен быть целым числом от 0.'
+    else:
+        context['frequent_cars'] = fetch_all('frequent_cars', (threshold,))
+    return render(request, 'refuelings/statistics.html', context)

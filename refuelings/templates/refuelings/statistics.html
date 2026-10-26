@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Статистика — Сервис учета топлива{% endblock %}
+{% block content %}
+  <h1>Статистика заправок</h1>
+  <p>Всего заправок: {{ totals.count }}.</p>
+  <p>Общий объём: {{ totals.total_liters|floatformat:1 }} л.</p>
+  <p>Общая стоимость: {{ totals.total_cost|floatformat:2 }} руб.</p>
+  <p>Средняя стоимость: {{ totals.average_cost|floatformat:2|default:"Нет данных" }} руб.</p>
+  <p>Минимальная стоимость: {{ totals.min_cost|floatformat:2|default:"Нет данных" }} руб.</p>
+  <p>Максимальная стоимость: {{ totals.max_cost|floatformat:2|default:"Нет данных" }} руб.</p>
+  <p>Автомобилей с нормой расхода: {{ consumption.count }}.
+    Средний расход: {{ consumption.average_consumption|floatformat:1|default:"Нет данных" }} л/100 км.</p>
+
+  <h2 class="h4">По автомобилям</h2>
+  <div class="table-responsive">
+    <table class="table table-bordered">
+      <thead><tr><th>Автомобиль</th><th>Заправок</th><th>Стоимость, руб.</th></tr></thead>
+      <tbody>
+        {% for car in by_car %}
+          <tr><td><a href="{% url 'cars:car_detail' car.id %}">{{ car.name }}</a></td><td>{{ car.count }}</td><td>{{ car.total_cost|floatformat:2 }}</td></tr>
+        {% empty %}<tr><td colspan="3">Автомобилей пока нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <h2 class="h4">По видам топлива</h2>
+  <div class="table-responsive">
+    <table class="table table-bordered">
+      <thead><tr><th>Топливо</th><th>Заправок</th><th>Объём, л</th></tr></thead>
+      <tbody>
+        {% for fuel in by_fuel %}
+          <tr><td>{{ fuel.name }}</td><td>{{ fuel.count }}</td><td>{{ fuel.total_liters|floatformat:1 }}</td></tr>
+        {% empty %}<tr><td colspan="3">Видов топлива пока нет.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <h2 class="h4">Автомобили без заправок</h2>
+  <ul>{% for car in without_refuelings %}
+    <li><a href="{% url 'cars:car_detail' car.id %}">{{ car.name }}</a></li>
+  {% empty %}<li>Нет автомобилей без заправок.</li>{% endfor %}</ul>
+
+  <h2 class="h4">Часто заправляемые автомобили</h2>
+  <form method="get" action="{% url 'refuelings:statistics' %}" class="mb-3">
+    <label for="threshold">Показать автомобили с количеством заправок больше</label>
+    <input id="threshold" name="threshold" type="number" min="0" step="1" value="{{ request.GET.threshold|default:'0' }}" class="form-control mb-2">
+    <button class="btn btn-dark" type="submit">Применить</button>
+  </form>
+  {% if error %}<p class="alert alert-danger" role="alert">{{ error }}</p>
+  {% else %}
+    <ul>{% for car in frequent_cars %}<li>{{ car.name }}: {{ car.count }}</li>
+    {% empty %}<li>Автомобилей с таким количеством заправок нет.</li>{% endfor %}</ul>
+  {% endif %}
+{% endblock %}
