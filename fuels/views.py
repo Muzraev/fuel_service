@@ -1,10 +1,8 @@
-﻿from django.shortcuts import render
+from django.shortcuts import render
 
-from db.database import fetch_all
+from .models import Fuel
 
 
 def fuels(request):
-    """Показать виды топлива из SQLite."""
-    return render(
-        request, 'fuels/fuel_list.html', {'fuels': fetch_all('fuels')}
-    )
+    return render(request, 'fuels/fuel_list.html', {
+        'fuels': Fuel.objects.order_by('name', 'id')})

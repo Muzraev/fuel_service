@@ -1,22 +1,19 @@
-﻿from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 
-from db.database import fetch_all, fetch_one
+from .models import Car
 
 
 def cars(request):
-    """Показать автомобили из SQLite."""
-    return render(request, 'cars/car_list.html', {'cars': fetch_all('cars')})
+    rows = Car.objects.all()
+    q = request.GET.get('q', '').strip()
+    if q:
+        rows = rows.filter(name__icontains=q)
+    return render(request, 'cars/car_list.html', {'cars': rows})
 
 
 def car_detail(request, car_id):
-    """Получить автомобиль и необязательную норму расхода через JOIN."""
-    car = fetch_one('car_detail', (car_id,))
-    consumption = (
-        car if car is not None and car['liters_per_100km'] is not None
-        else None
-    )
-    return render(
-        request, 'cars/car_detail.html',
-        {'car': car, 'consumption': consumption},
-        status=404 if car is None else 200,
-    )
+    car = get_object_or_404(Car.objects.select_related('consumption'),
+                            pk=car_id)
+    return render(request, 'cars/car_detail.html', {
+        'car': car, 'consumption': getattr(car, 'consumption', None),
+    })

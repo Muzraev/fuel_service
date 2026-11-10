@@ -1,0 +1,11 @@
+<label for="q">Поиск по автомобилю или топливу</label>
+<input class="form-control mb-2" id="q" name="q" value="{{ request.GET.q }}">
+<label for="sort">Сортировка</label>
+<select class="form-select mb-2" id="sort" name="sort">
+  <option value="-cost" {% if request.GET.sort == '-cost' %}selected{% endif %}>Стоимость: сначала дорогие</option>
+  <option value="cost" {% if request.GET.sort == 'cost' %}selected{% endif %}>Стоимость: сначала дешёвые</option>
+  <option value="id" {% if request.GET.sort == 'id' %}selected{% endif %}>ID по возрастанию</option>
+  <option value="-id" {% if request.GET.sort == '-id' %}selected{% endif %}>ID по убыванию</option>
+  <option value="car" {% if request.GET.sort == 'car' %}selected{% endif %}>Автомобиль</option>
+  <option value="liters" {% if request.GET.sort == 'liters' %}selected{% endif %}>Объём</option>
+</select>

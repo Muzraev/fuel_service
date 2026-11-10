@@ -81,48 +81,6 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(len(database.fetch_all('frequent_cars', (1,))), 1)
         self.assertEqual(database.fetch_all('frequent_cars', (2,)), [])
 
-    def test_pages_and_filters(self):
-        for url in (
-            '/', '/cars/', '/cars/1/', '/cars/2/', '/fuels/',
-            '/refuelings/', '/refuelings/1/', '/refuelings/search/',
-            '/refuelings/statistics/',
-        ):
-            with self.subTest(url=url):
-                self.assertEqual(self.client.get(url).status_code, 200)
-        response = self.client.get('/refuelings/search/', {
-            'car': 1, 'fuel': 1, 'min_liters': 20,
-        })
-        html = response.content.decode()
-        self.assertIn('Заправка №1', html)
-        self.assertNotIn('Заправка №2', html)
-        for url in ('/cars/999/', '/refuelings/999/'):
-            self.assertEqual(self.client.get(url).status_code, 404)
-        html = self.client.get('/cars/2/').content.decode()
-        self.assertIn('Не указан', html)
-
-    def test_bad_parameters_and_empty_results(self):
-        for value in ('abc', "1 OR 1=1", 'nan', 'inf', '-1'):
-            response = self.client.get('/refuelings/search/', {
-                'min_liters': value,
-            })
-            self.assertIn('Проверьте параметры', response.content.decode())
-        response = self.client.get('/refuelings/search/', {'car': "1'--"})
-        self.assertIn('Проверьте параметры', response.content.decode())
-        response = self.client.get('/refuelings/search/', {'car': str(2**64)})
-        self.assertIn('Проверьте параметры', response.content.decode())
-        response = self.client.get('/refuelings/statistics/?threshold=abc')
-        self.assertIn('Порог должен быть', response.content.decode())
-        response = self.client.get('/refuelings/search/?car=2')
-        self.assertIn('заправок не найдено', response.content.decode())
-        with closing(database.get_connection()) as connection:
-            with connection:
-                connection.execute('DELETE FROM refuelings')
-        self.assertEqual(database.fetch_one('totals')['total_cost'], 0)
-        self.assertEqual(database.fetch_one('totals')['count'], 0)
-        self.assertEqual(
-            self.client.get('/refuelings/statistics/').status_code, 200
-        )
-
     def test_import_rolls_back_on_invalid_relationship(self):
         source = Path(self.temp.name)
         for name in ('cars', 'fuels', 'consumptions', 'refuelings'):

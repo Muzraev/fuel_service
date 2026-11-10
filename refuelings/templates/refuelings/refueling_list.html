@@ -4,7 +4,9 @@
 
 {% block content %}
   <h1>Заправки</h1>
-  <p>Всего заправок: {{ refuelings|length }}</p>
+{% if error %}<p role="alert">{{ error }}</p>{% endif %}
+<p><a href="{% url 'refuelings:search' %}">Поиск и сортировка</a></p>
+  <p>Всего заправок: {{ page_obj.paginator.count }}</p>
 
   {% if refuelings %}
     <p>
@@ -18,4 +20,5 @@
   {% empty %}
     <p>Заправок пока нет.</p>
   {% endfor %}
+{% include "refuelings/includes/pagination.html" %}
 {% endblock %}

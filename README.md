@@ -1,160 +1,97 @@
-﻿# Сервис учета топлива
+# Сервис учёта топлива — ПР9
 
-Индивидуальный проект по дисциплине «Технологии разработки приложений на базе фреймворков».
-Автор: Музраев Санджи Мингиянович, ЭФБО-16-24, 2026.
+Индивидуальный проект: Музраев Санджи Мингиянович, ЭФБО-16-24.
+Автомобили, топливо, нормы расхода и заправки. Консольная JSON-версия
+и SQL-реализация ПР7 сохранены; прежнее описание — README_PR7.md.
 
-Проект предназначен для учёта автомобилей, видов топлива, норм расхода и заправок.
-Главная сущность — `Refueling`: заправка связывает автомобиль и топливо, содержит
-объём и цену за литр. Стоимость вычисляется как произведение объёма и цены.
-
-## Текущее состояние: ПР7
-
-Веб-приложение получает данные через SQL и стандартную библиотеку `sqlite3`.
-Django ORM для предметной области не используется. Сохранены приложения,
-маршруты, шаблоны и статика ПР6. Добавлены поиск заправок и статистика.
-Исходные классы `models/`, `storage.py`, JSON и консольная версия `main.py`
-сохранены как предыдущая реализация. Консольная версия продолжает работать с JSON;
-изменения в ней не синхронизируются с SQLite автоматически.
-
-## Запуск
-
-Из корня проекта:
+## Запуск (терминал VS Code, PowerShell, из корня проекта)
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-python -m db.database
-python -m db.import_json
-python manage.py migrate
-python manage.py check
-python manage.py runserver --insecure
+.\.venv\Scripts\python.exe manage.py migrate
+.\.venv\Scripts\python.exe manage.py import_pr7
+.\.venv\Scripts\python.exe manage.py runserver --insecure
 ```
 
-Открыть http://127.0.0.1:8000/. В текущих настройках `DEBUG = False`, поэтому
-`--insecure` нужен серверу разработки для раздачи статики. Для публикации этот
-режим не предназначен. `migrate` создаёт только служебные таблицы Django в
-`db.sqlite3`; предметные таблицы создаёт `sql/schema.sql` в отдельном файле
-`data/fuel_service.sqlite`.
+Если окружения ещё нет: `python -m venv .venv`, затем
+`.\.venv\Scripts\python.exe -m pip install -r requirements.txt`.
+Главная: http://127.0.0.1:8000/.
+DEBUG=False сохранён; --insecure служит только для локальной статики.
 
-## Структура базы данных
+## Модели и перенос
 
-| Таблица | Поля и типы | Назначение |
-| --- | --- | --- |
-| cars | id INTEGER PRIMARY KEY, name TEXT NOT NULL | Автомобили |
-| fuels | id INTEGER PRIMARY KEY, name TEXT NOT NULL | Виды топлива |
-| consumptions | id INTEGER PRIMARY KEY, car_id INTEGER NOT NULL UNIQUE, liters_per_100km REAL NOT NULL | Норма расхода автомобиля |
-| refuelings | id INTEGER PRIMARY KEY, car_id INTEGER NOT NULL, fuel_id INTEGER NOT NULL, fuel_liters REAL NOT NULL, price_per_liter REAL NOT NULL | Заправки |
+- cars/models.py: Car(name), Consumption(car, liters_per_100km).
+- fuels/models.py: Fuel(name).
+- refuelings/models.py: Refueling(car, fuel, fuel_liters, price_per_liter).
+- Неявные PK — BigAutoField. Названия CharField(200), числа FloatField
+  для совместимости с REAL ПР7; стоимость выводится с двумя знаками.
+- Все поля обязательны (blank=False, null=False); числовые CHECK > 0.
+- Car → Consumption: один к одному, необязательность выражена отсутствием
+  нормы. Car/Fuel → Refueling: один ко многим. PROTECT запрещает удалять
+  используемые автомобиль/топливо. related_name: consumption/refuelings.
 
-Внешние ключи: `consumptions.car_id → cars.id`, `refuelings.car_id → cars.id`,
-`refuelings.fuel_id → fuels.id`. Один автомобиль имеет не более одной нормы расхода
-и любое число заправок. У вида топлива может быть много заправок.
+Стратегия: новые управляемые Django таблицы в db.sqlite3. Предметная база
+data/fuel_service.sqlite остаётся источником ПР7 и открывается только на чтение.
+Служебные таблицы Django сохраняются. Не применяем --fake к старой схеме.
+Команда import_pr7 сохраняет ID, переносит родителей перед дочерними записями
+в одной транзакции, выполняет full_clean. Совпадающие записи пропускаются,
+конфликт существующего ID отменяет всю транзакцию. Повторный запуск безопасен.
+Это перенос, а не двусторонняя синхронизация; JSON-консоль остаётся независимой.
+Резервные копии исходной базы и файлов сделаны отдельно перед обновлением.
 
-Все хранимые поля обязательны. Неизвестный расход представлен отсутствием строки
-в `consumptions`; `LEFT JOIN` возвращает `NULL`, и страница показывает «Не указан».
-Положительные числовые значения проверяются `CHECK`, названия не могут быть пустыми.
-Удаление связанного автомобиля или топлива блокируется внешними ключами.
-На каждом соединении включается `PRAGMA foreign_keys = ON`.
+## Страницы и ORM
 
-`REAL` сохранён для совместимости с исходными JSON и учебной предметной областью;
-денежные показатели выводятся с двумя знаками после запятой.
+Сохранены /, /cars/, /cars/<id>/, /fuels/, /refuelings/,
+/refuelings/<id>/, /refuelings/search/, /refuelings/statistics/.
+GET поиска: car, fuel, min_liters, q (название автомобиля ИЛИ топлива),
+exclude_fuel; sort: id, -id, cost, -cost, car, liters; page.
+Сортировка по умолчанию -cost, затем id. Неизвестный sort получает этот
+вариант. Фильтры применяются перед сортировкой и Paginator(5).
+querystring сохраняет параметры при смене страницы. Неверная страница
+обрабатывается get_page; неверные числовые фильтры показывают сообщение.
+Список и поиск используют один общий обработчик listing.
 
-## Файлы SQL-слоя
+Отдельные ORM-выборки и их назначение (не подсчёт вызовов в одной цепочке):
 
-- `sql/schema.sql` — повторно исполняемая схема с `CREATE TABLE IF NOT EXISTS`.
-- `sql/queries.sql` — 12 именованных запросов; это единственный источник SQL для страниц.
-- `db/database.py` — абсолютный путь к базе, соединения, `sqlite3.Row`, чтение запросов.
-- `db/import_json.py` — импорт четырёх JSON в одной транзакции: автомобили, топливо,
-  нормы расхода, заправки. Родительские записи импортируются раньше дочерних.
-- `data/fuel_service.sqlite` — созданная база с фактическими данными проекта.
+1. Car.objects.all() — список автомобилей.
+2. Car.filter(name__icontains=q) — поиск автомобиля.
+3. Car.select_related('consumption') + get_object_or_404 — карточка.
+4. Fuel.order_by('name', 'id') — список топлива.
+5. costs() — стоимость через annotate и F.
+6. rows.filter(car_id=...) — отбор заправок автомобиля.
+7. rows.filter(fuel_id=...) — отбор вида топлива (совместим с №6).
+8. rows.filter(fuel_liters__gte=...) — отбор объёма.
+9. rows.filter(Q(car__name__icontains=q) | Q(fuel__name__icontains=q)) — поиск.
+10. rows.exclude(fuel_id=...) — исключение топлива.
+11. rows.order_by(*SORTS[...]) — разрешённая сортировка, включая связи.
+12. rows.aggregate(Sum('cost')) — сумма отфильтрованного набора.
+13. rows.values(..., car_name=F('car__name'), fuel_name=F('fuel__name')) — карточки.
+14. Refueling.select_related('car', 'fuel') + get_object_or_404 — подробности.
+15. costs().aggregate(Count, Sum, Avg, Min, Max) — общая статистика.
+16. Consumption.aggregate(Count, Avg) — статистика расхода.
+17. Car.annotate(Count, Sum).order_by('-total_cost', 'id') — группы автомобилей.
+18. Fuel.annotate(Count, Sum) — группы топлива.
+19. Car.filter(refuelings__isnull=True) — автомобили без заправок.
+20. by_car.filter(count__gt=threshold) — условие на агрегат (HAVING).
+21. Paginator(values, PAGE_SIZE).get_page(...) — ограниченная выборка страницы.
 
-Импорт сохраняет исходные ID. Повторный запуск не создаёт дублей и не меняет строки
-с существующими ID (`ON CONFLICT(id) DO NOTHING`). Это первоначальный перенос,
-а не синхронизация: для изменения существующих записей нужен отдельный запрос.
-При нарушении связей или ограничений вся транзакция откатывается.
-Для исходного набора перенесено по одной записи в каждую из четырёх таблиц.
-
-## SQL-запросы и пользовательские сценарии
-
-| № | Имя в queries.sql | Назначение и использование |
-| --- | --- | --- |
-| 1 | cars | Список автомобилей, SELECT и ORDER BY: `/cars/`, варианты поиска |
-| 2 | fuels | Список топлива, SELECT и ORDER BY: `/fuels/`, варианты поиска |
-| 3 | car_detail | WHERE и LEFT JOIN: автомобиль и необязательная норма расхода |
-| 4 | refuelings | JOIN трёх таблиц: список заправок и вычисление стоимости |
-| 5 | refueling_detail | JOIN и WHERE: отдельная заправка |
-| 6 | search | WHERE, AND, параметры: автомобиль, топливо, минимальный объём |
-| 7 | without_refuelings | NOT EXISTS: автомобили без заправок в статистике |
-| 8 | totals | COUNT, SUM, AVG, MIN, MAX: количество, объём и стоимость |
-| 9 | consumption_totals | COUNT, AVG: количество норм и средний расход |
-| 10 | by_car | LEFT JOIN, GROUP BY: число заправок и расходы по автомобилям |
-| 11 | by_fuel | LEFT JOIN, GROUP BY: число заправок и объём по видам топлива |
-| 12 | frequent_cars | GROUP BY, HAVING: автомобили с числом заправок больше порога |
-
-Минимум методички соблюдён: 12 запросов, два списка, несколько WHERE и JOIN,
-два самостоятельных агрегатных запроса и три запроса с группировкой.
-Все результаты используются на веб-страницах.
-Поиск свободных помещений из учебного примера адаптирован к предметной области:
-пользователь ищет заправки по автомобилю, виду топлива и объёму; отдельно видит
-автомобили без заправок. Дата и статус отмены не добавлены, поскольку исходная
-модель заправки их не содержит.
-
-Значения передаются отдельно от SQL через `?`. Соединения закрываются после чтения.
-`sqlite3.Row` позволяет получать столбцы по имени. Представления передают строки
-и подготовленные карточки через `context` в шаблоны Django.
-
-## Страницы
-
-- `/` — главная.
-- `/cars/`, `/cars/<id>/` — автомобили и расход.
-- `/fuels/` — виды топлива.
-- `/refuelings/`, `/refuelings/<id>/` — заправки со связанными данными.
-- `/refuelings/search/` — поиск (GET: `car`, `fuel`, `min_liters`).
-- `/refuelings/statistics/` — статистика (GET: `threshold`, условие количества `> threshold`).
-
-Например: `/refuelings/search/?car=1&fuel=1&min_liters=20`.
-Неизвестные ID карточек возвращают 404. Пустые результаты поиска и статистики
-обрабатываются шаблонами; неверные числовые параметры показывают сообщение.
-Навигация использует именованные URL.
-
-Общий шаблон — `templates/base.html`, навигация — `templates/includes/navigation.html`.
-Карточки вынесены в `cars/templates/cars/includes/car_card.html` и
-`refuelings/templates/refuelings/includes/refueling_card.html`.
-Статика находится в `homepage/static/homepage/`. Используются DTL, Bootstrap 5.3,
-CSS и JavaScript. Формы изменения данных в ПР7 не реализуются.
+Создание, изменение, удаление выполняются через ORM в Django Shell;
+формы записи не добавлялись в рамках ПР9. Тесты показывают CRUD и PROTECT.
+В представлениях нет прямого SQL. values возвращает словари с именами связей,
+шаблоны карточек сохранены. Детальная страница использует объект модели.
+Отсутствующая карточка возвращает 404. LEFT JOIN в статистике сохраняет
+родителей без дочерних записей; суммы пустых групп равны 0.
 
 ## Проверки
 
 ```powershell
-python manage.py check
-pytest -v -p no:cacheprovider
-flake8 .
+.\.venv\Scripts\python.exe manage.py check
+.\.venv\Scripts\python.exe manage.py showmigrations
+.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
+.\.venv\Scripts\python.exe -m pytest -v -p no:cacheprovider
+.\.venv\Scripts\python.exe -m flake8 .
 ```
 
-`tests/test_database.py` проверяет все 12 запросов, импорт без дублей, откат импорта,
-внешние ключи, ограничения, агрегаты, страницы, фильтры, пустые результаты и
-некорректные параметры. Используется временная база; рабочие данные не меняются.
-Остальные тесты проверяют сохранённую консольную реализацию.
-
-Для ручной проверки SQL без установки SQLite CLI:
-
-```powershell
-python -c "from db.database import fetch_all; print([dict(row) for row in fetch_all('by_car')])"
-python -c "from db.database import fetch_all; print([dict(row) for row in fetch_all('search', (1, 1, 1, 1, 20))])"
-```
-
-Запросы с `?` требуют параметров; их нельзя выполнять как единый скрипт без
-привязки значений. Автоматические тесты исполняют каждый запрос через `sqlite3`.
-SQLite CLI и расширение VS Code для просмотра БД не требуются для запуска.
-
-## Консольная версия
-
-```powershell
-python main.py
-```
-
-## Фиксация результата
-
-Перед сдачей просмотреть `git diff`, затем сохранить изменения ПР7 коммитом с
-префиксом `PR7:`, например `PR7: add SQLite storage, search and statistics`.
-Локальные изменения настроек следует проверить отдельно перед включением в коммит.
+tests/test_database.py проверяет сохранённый SQL-слой.
+tests/test_orm.py использует отдельную временную базу: миграции, перенос,
+повторный перенос и конфликт, CRUD, PROTECT, страницы, 404, пустые родители,
+фильтры, сортировку, пагинацию и сохранение GET-параметров.
