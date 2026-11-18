@@ -2,6 +2,9 @@
 {% block title %}Статистика — Сервис учета топлива{% endblock %}
 {% block content %}
   <h1>Статистика заправок</h1>
+  <p>Все записи: {{ status_totals.all_count }}. Запланировано: {{ status_totals.active }}.
+    Отменено: {{ status_totals.cancelled }}. Проведено: {{ status_totals.completed }}.</p>
+  <p>Объём и расходы ниже рассчитаны только по проведённым заправкам.</p>
   <p>Всего заправок: {{ totals.count }}.</p>
   <p>Общий объём: {{ totals.total_liters|floatformat:1 }} л.</p>
   <p>Общая стоимость: {{ totals.total_cost|floatformat:2 }} руб.</p>

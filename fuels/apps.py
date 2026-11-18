@@ -4,3 +4,4 @@ from django.apps import AppConfig
 class FuelsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'fuels'
+    verbose_name = 'Топливо'

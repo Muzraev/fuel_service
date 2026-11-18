@@ -9,3 +9,13 @@
   <option value="car" {% if request.GET.sort == 'car' %}selected{% endif %}>Автомобиль</option>
   <option value="liters" {% if request.GET.sort == 'liters' %}selected{% endif %}>Объём</option>
 </select>
+
+<label for="date">Дата</label>
+<input type="date" name="date" id="date" value="{{ request.GET.date }}" class="form-control mb-2">
+<label for="status">Статус</label>
+<select name="status" id="status" class="form-select mb-2">
+  <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>Проведена</option>
+  <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Запланирована</option>
+  <option value="cancelled" {% if request.GET.status == 'cancelled' %}selected{% endif %}>Отменена</option>
+  <option value="all" {% if request.GET.status == 'all' %}selected{% endif %}>Все</option>
+</select>

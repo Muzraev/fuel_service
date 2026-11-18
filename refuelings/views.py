@@ -1,4 +1,5 @@
 import math
+from datetime import date
 
 from django.core.paginator import Paginator
 from django.db.models import Avg, Count, F, Max, Min, Q, Sum
@@ -22,6 +23,13 @@ def costs():
 
 def filtered(request):
     rows = costs()
+    status = request.GET.get('status', Refueling.Status.COMPLETED)
+    if status not in Refueling.Status.values and status != 'all':
+        raise ValueError
+    if status != 'all':
+        rows = rows.filter(status=status)
+    if request.GET.get('date'):
+        rows = rows.for_date(date.fromisoformat(request.GET['date']))
     for key in ('car', 'fuel'):
         if request.GET.get(key):
             value = int(request.GET[key])
@@ -55,11 +63,13 @@ def listing(request, template):
     context['total_cost'] = rows.aggregate(value=Sum('cost'))['value'] or 0
     # values() retrieves related names in SQL; no model N+1 queries.
     values = rows.values('id', 'car_id', 'fuel_id', 'fuel_liters',
-                         'price_per_liter', 'cost', car_name=F('car__name'),
+                         'price_per_liter', 'cost', 'status', 'date',
+                         car_name=F('car__name'),
                          fuel_name=F('fuel__name'))
     page = Paginator(values, PAGE_SIZE).get_page(request.GET.get('page'))
     items = []
     for row in page:
+        row['status_label'] = Refueling.Status(row['status']).label
         row['car'] = {'id': row['car_id'], 'name': row['car_name']}
         row['fuel'] = {'id': row['fuel_id'], 'name': row['fuel_name']}
         items.append({'refueling': row, 'cost': row['cost']})
@@ -85,12 +95,21 @@ def refueling_detail(request, refueling_id):
 
 def statistics(request):
     by_car = Car.objects.annotate(
-        count=Count('refuelings'),
+        count=Count('refuelings', filter=Q(
+            refuelings__status=Refueling.Status.COMPLETED)),
         total_cost=Sum(F('refuelings__fuel_liters')
-                       * F('refuelings__price_per_liter'), default=0),
+                       * F('refuelings__price_per_liter'),
+                       filter=Q(refuelings__status=Refueling.Status.COMPLETED),
+                       default=0),
     ).order_by('-total_cost', 'id')
     context = {
-        'totals': costs().aggregate(
+        'status_totals': Refueling.objects.aggregate(
+            all_count=Count('id'),
+            active=Count('id', filter=Q(status=Refueling.Status.ACTIVE)),
+            cancelled=Count('id', filter=Q(status=Refueling.Status.CANCELLED)),
+            completed=Count(
+                'id', filter=Q(status=Refueling.Status.COMPLETED))),
+        'totals': costs().completed().aggregate(
             count=Count('id'), total_liters=Sum('fuel_liters', default=0),
             total_cost=Sum('cost', default=0), average_cost=Avg('cost'),
             min_cost=Min('cost'), max_cost=Max('cost')),
@@ -98,8 +117,12 @@ def statistics(request):
             count=Count('id'), average_consumption=Avg('liters_per_100km')),
         'by_car': by_car,
         'by_fuel': Fuel.objects.annotate(
-            count=Count('refuelings'),
-            total_liters=Sum('refuelings__fuel_liters', default=0)),
+            count=Count('refuelings', filter=Q(
+                refuelings__status=Refueling.Status.COMPLETED)),
+            total_liters=Sum('refuelings__fuel_liters',
+                             filter=Q(**{
+                                 'refuelings__status':
+                                 Refueling.Status.COMPLETED}), default=0)),
         'without_refuelings': Car.objects.filter(refuelings__isnull=True),
     }
     try:

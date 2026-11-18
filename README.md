@@ -1,97 +1,105 @@
-# Сервис учёта топлива — ПР9
+# Сервис учёта топлива — ПР10
 
-Индивидуальный проект: Музраев Санджи Мингиянович, ЭФБО-16-24.
-Автомобили, топливо, нормы расхода и заправки. Консольная JSON-версия
-и SQL-реализация ПР7 сохранены; прежнее описание — README_PR7.md.
+Индивидуальный проект Музраева Санджи Мингияновича, ЭФБО-16-24.
+Продолжение ПР9: Django Admin, QuerySet, статусы, slug, GeneratedField,
+контекстный процессор и анализ SQL. Предыдущие описания: README_PR9.md,
+README_PR7.md. Предметная область — автомобили и заправки, а не Roomly.
 
-## Запуск (терминал VS Code, PowerShell, из корня проекта)
-
-```powershell
-.\.venv\Scripts\python.exe manage.py migrate
-.\.venv\Scripts\python.exe manage.py import_pr7
-.\.venv\Scripts\python.exe manage.py runserver --insecure
-```
-
-Если окружения ещё нет: `python -m venv .venv`, затем
-`.\.venv\Scripts\python.exe -m pip install -r requirements.txt`.
-Главная: http://127.0.0.1:8000/.
-DEBUG=False сохранён; --insecure служит только для локальной статики.
-
-## Модели и перенос
-
-- cars/models.py: Car(name), Consumption(car, liters_per_100km).
-- fuels/models.py: Fuel(name).
-- refuelings/models.py: Refueling(car, fuel, fuel_liters, price_per_liter).
-- Неявные PK — BigAutoField. Названия CharField(200), числа FloatField
-  для совместимости с REAL ПР7; стоимость выводится с двумя знаками.
-- Все поля обязательны (blank=False, null=False); числовые CHECK > 0.
-- Car → Consumption: один к одному, необязательность выражена отсутствием
-  нормы. Car/Fuel → Refueling: один ко многим. PROTECT запрещает удалять
-  используемые автомобиль/топливо. related_name: consumption/refuelings.
-
-Стратегия: новые управляемые Django таблицы в db.sqlite3. Предметная база
-data/fuel_service.sqlite остаётся источником ПР7 и открывается только на чтение.
-Служебные таблицы Django сохраняются. Не применяем --fake к старой схеме.
-Команда import_pr7 сохраняет ID, переносит родителей перед дочерними записями
-в одной транзакции, выполняет full_clean. Совпадающие записи пропускаются,
-конфликт существующего ID отменяет всю транзакцию. Повторный запуск безопасен.
-Это перенос, а не двусторонняя синхронизация; JSON-консоль остаётся независимой.
-Резервные копии исходной базы и файлов сделаны отдельно перед обновлением.
-
-## Страницы и ORM
-
-Сохранены /, /cars/, /cars/<id>/, /fuels/, /refuelings/,
-/refuelings/<id>/, /refuelings/search/, /refuelings/statistics/.
-GET поиска: car, fuel, min_liters, q (название автомобиля ИЛИ топлива),
-exclude_fuel; sort: id, -id, cost, -cost, car, liters; page.
-Сортировка по умолчанию -cost, затем id. Неизвестный sort получает этот
-вариант. Фильтры применяются перед сортировкой и Paginator(5).
-querystring сохраняет параметры при смене страницы. Неверная страница
-обрабатывается get_page; неверные числовые фильтры показывают сообщение.
-Список и поиск используют один общий обработчик listing.
-
-Отдельные ORM-выборки и их назначение (не подсчёт вызовов в одной цепочке):
-
-1. Car.objects.all() — список автомобилей.
-2. Car.filter(name__icontains=q) — поиск автомобиля.
-3. Car.select_related('consumption') + get_object_or_404 — карточка.
-4. Fuel.order_by('name', 'id') — список топлива.
-5. costs() — стоимость через annotate и F.
-6. rows.filter(car_id=...) — отбор заправок автомобиля.
-7. rows.filter(fuel_id=...) — отбор вида топлива (совместим с №6).
-8. rows.filter(fuel_liters__gte=...) — отбор объёма.
-9. rows.filter(Q(car__name__icontains=q) | Q(fuel__name__icontains=q)) — поиск.
-10. rows.exclude(fuel_id=...) — исключение топлива.
-11. rows.order_by(*SORTS[...]) — разрешённая сортировка, включая связи.
-12. rows.aggregate(Sum('cost')) — сумма отфильтрованного набора.
-13. rows.values(..., car_name=F('car__name'), fuel_name=F('fuel__name')) — карточки.
-14. Refueling.select_related('car', 'fuel') + get_object_or_404 — подробности.
-15. costs().aggregate(Count, Sum, Avg, Min, Max) — общая статистика.
-16. Consumption.aggregate(Count, Avg) — статистика расхода.
-17. Car.annotate(Count, Sum).order_by('-total_cost', 'id') — группы автомобилей.
-18. Fuel.annotate(Count, Sum) — группы топлива.
-19. Car.filter(refuelings__isnull=True) — автомобили без заправок.
-20. by_car.filter(count__gt=threshold) — условие на агрегат (HAVING).
-21. Paginator(values, PAGE_SIZE).get_page(...) — ограниченная выборка страницы.
-
-Создание, изменение, удаление выполняются через ORM в Django Shell;
-формы записи не добавлялись в рамках ПР9. Тесты показывают CRUD и PROTECT.
-В представлениях нет прямого SQL. values возвращает словари с именами связей,
-шаблоны карточек сохранены. Детальная страница использует объект модели.
-Отсутствующая карточка возвращает 404. LEFT JOIN в статистике сохраняет
-родителей без дочерних записей; суммы пустых групп равны 0.
-
-## Проверки
+## Установка и запуск в PowerShell
 
 ```powershell
-.\.venv\Scripts\python.exe manage.py check
-.\.venv\Scripts\python.exe manage.py showmigrations
-.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
-.\.venv\Scripts\python.exe -m pytest -v -p no:cacheprovider
-.\.venv\Scripts\python.exe -m flake8 .
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python manage.py migrate
+python manage.py import_pr7
+python manage.py createsuperuser
+$env:DJANGO_DEBUG="1"
+python manage.py runserver
 ```
 
-tests/test_database.py проверяет сохранённый SQL-слой.
-tests/test_orm.py использует отдельную временную базу: миграции, перенос,
-повторный перенос и конфликт, CRUD, PROTECT, страницы, 404, пустые родители,
-фильтры, сортировку, пагинацию и сохранение GET-параметров.
+Если окружение и база уже подготовлены, повторно создавать их не нужно.
+Админка: http://127.0.0.1:8000/admin/. Пароль задаётся локально и не хранится
+в репозитории. `DJANGO_DEBUG=1` включает Toolbar только для локальной разработки;
+без переменной DEBUG=False, локальную статику можно запустить через --insecure.
+FUEL_SERVICE_DB позволяет указать отдельную SQLite-базу для демонстрации.
+Рабочие записи не заменяются демонстрационными.
+
+## Административная панель
+
+Зарегистрированы Car, Consumption, Fuel и Refueling. Настроены русские названия
+приложений, моделей и полей, __str__, help_text, поиск, фильтры, ordering,
+list_display_links, list_per_page=10. В Car показаны inline нормы расхода и
+заправок; в Fuel — inline заправок. amount и id доступны только для чтения.
+RefuelingAdmin загружает car и fuel через list_select_related, ищет по их
+названиям, позволяет менять статус в списке и массово отменять выбранные записи.
+На рабочем компьютере создана группа «Наблюдатели учёта топлива» только с правами
+просмотра. Для другого окружения группу можно создать через /admin/auth/group/.
+Права Django не отменяют PROTECT и ограничения модели; конфликты бронирования
+не относятся к предметной области этого проекта.
+
+## Модели и миграции
+
+Car.slug — уникальный англоязычный slug; для существующих автомобилей миграция
+RunPython присваивает car-ID. Для новых — ASCII slug имени с уникальным суффиксом.
+get_absolute_url использует reverse. Новый адрес /cars/by-slug/<slug>/;
+старый /cars/<id>/ сохранён. Slug сначала добавляется nullable, заполняется,
+затем получает NOT NULL и UNIQUE: миграции cars 0002–0004.
+
+Refueling.Status (TextChoices): active — «Запланирована», cancelled — «Отменена»,
+completed — «Проведена». Исходная модель ПР9 не содержала is_cancelled, поэтому
+искусственное промежуточное поле не вводилось. AddField с default=completed
+сохраняет прежние записи как проведённые. Миграция refuelings 0002 добавляет
+также nullable date (неизвестные исторические даты не выдумываются) и amount.
+GeneratedField amount хранит произведение объёма и цены, db_persist=True;
+после изменения исходных полей его пересчитывает SQLite.
+
+RefuelingQuerySet подключён через as_manager: active(), cancelled(), completed(),
+for_date(date), for_car(car). Метод for_date выбирает только известную дату.
+После изменений моделей: python manage.py makemigrations; python manage.py migrate.
+Для проверки: python manage.py makemigrations --check --dry-run.
+
+## Страницы и бизнес-правила
+
+Сохранены все страницы ПР9. /refuelings/search/ поддерживает car, fuel,
+min_liters, q, exclude_fuel, sort, page, а также date=YYYY-MM-DD и status.
+По умолчанию показаны проведённые заправки; status=all показывает все.
+Отбор, сортировка по разрешённому словарю и Paginator(5) выполняются до
+материализации списка; querystring сохраняет параметры.
+
+/refuelings/statistics/ показывает число записей по всем статусам через
+условные Count/Q; объём и расходы рассчитываются только по проведённым.
+Запланированная или отменённая заправка не должна увеличивать фактические расходы.
+
+/cars/without-plans/?date=2026-11-18 показывает автомобили без запланированной
+заправки на дату: active().for_date(...).values_list и exclude(pk__in=...).
+Отменённая и проведённая записи не исключают автомобиль. Это адаптация примера
+свободных помещений; несколько заправок автомобиля на дату не запрещены.
+
+homepage.context_processors.service_context передаёт название и число автомобилей
+в общую навигацию. Это один дополнительный COUNT на рендер страницы.
+
+## Проверки и анализ SQL
+
+```powershell
+python manage.py check
+python manage.py showmigrations
+python manage.py makemigrations --check --dry-run
+pytest -v -p no:cacheprovider
+flake8 .
+```
+
+Проверено 30 тестов и 12 subtests. tests/test_pr10.py проверяет Admin и права
+просмотра, inline, CRUD, статусы/дату, GeneratedField, slug/404, отсутствие N+1,
+контекстный процессор, CHECK/IntegrityError и исключение отменённых планов.
+Все тесты БД работают во временной базе, рабочие данные не меняются.
+
+Фактический анализ Debug Toolbar на демонстрационной копии базы: карточка
+заправки — 2 SQL (JOIN заправки/автомобиля/топлива и COUNT контекстного процессора),
+поиск с пагинацией — 6 SQL (итоговая сумма, COUNT пагинации, текущая страница,
+списки автомобилей/топлива и общий COUNT), статистика — 8 SQL.
+Запросы связанных объектов не повторяются для каждой карточки.
+Числа могут изменяться при добавлении общих компонентов или авторизации.
+
+Личные шпаргалки, доступы к админке, отчёт, резервные и демонстрационные базы
+хранятся вне репозитория. В коммит не включаются локальные изменения баз данных.

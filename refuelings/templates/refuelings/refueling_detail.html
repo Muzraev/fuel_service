@@ -12,6 +12,7 @@
   {% if refueling %}
     <div class="card fuel-card">
       <div class="card-body">
+<p>Статус: {{ refueling.get_status_display }}</p>
         <h1 class="card-title">Заправка №{{ refueling.id }}</h1>
         <p><strong>Автомобиль:</strong> {{ refueling.car.name }}</p>
         <p><strong>Топливо:</strong> {{ refueling.fuel.name }}</p>

@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Автомобили без запланированных заправок</h1>
+<form method="get"><label>Дата <input type="date" name="date" value="{{ selected_date }}"></label><button>Найти</button></form>
+{% if error %}<p role="alert">{{ error }}</p>{% endif %}
+{% for car in cars %}{% include "cars/includes/car_card.html" %}{% empty %}<p>Нет результатов. Укажите дату.</p>{% endfor %}
+{% endblock %}
