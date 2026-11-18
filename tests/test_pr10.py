@@ -52,6 +52,8 @@ def test_admin_crud_search_inline_and_permissions(orm_db):  # noqa: F811
     car = Car.objects.first()
     assert 'id_refuelings-TOTAL_FORMS' in orm_db.get(
         f'/admin/cars/car/{car.pk}/change/').content.decode()
+    assert 'refuelings-0-car' in orm_db.get(
+        '/admin/fuels/fuel/1/change/').content.decode()
     response = orm_db.post('/admin/fuels/fuel/add/',
                            {'name': 'Admin fuel', '_save': 'Save',
                             'refuelings-TOTAL_FORMS': '0',
